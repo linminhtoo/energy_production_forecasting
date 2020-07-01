@@ -1,2 +1,2 @@
-# demand_modelling
-Energy Demand Modelling for AI4Impact Datathon
+# Energy Demand Modelling for AI4Impact Datathon
+Dataset can be found at https://www.kaggle.com/robikscube/hourly-energy-consumption.
