@@ -71,7 +71,7 @@ class TrainTest():
                                 
             self.optimizer = params['OPTIMIZER'](self.model.parameters(),
                                                 lr=params['LEARNING_RATE'])
-        if use_gpu: 
+        if self.use_gpu: 
             self.model.cuda()
         
         # result
