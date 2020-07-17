@@ -71,6 +71,8 @@ class TrainTest():
                                 
             self.optimizer = params['OPTIMIZER'](self.model.parameters(),
                                                 lr=params['LEARNING_RATE'])
+        if use_gpu: 
+            self.model.cuda()
         
         # result
         self.mean_train_loss = []
@@ -100,7 +102,10 @@ class TrainTest():
             loss.backward()
             self.optimizer.step()
         
-        return loss.data
+        if self.use_gpu: 
+            return loss.data.cpu()
+        else:
+            return loss.data 
     
     def train(self): 
         tic = time.time()
@@ -163,7 +168,10 @@ class TrainTest():
         self.predictions = outputs
         self.stats['test_loss'] = self.loss(self.predictions, y.squeeze())#, X[:,-1,1].squeeze()) 
         # TODO: to incorporate the 3rd argument nicely^
-        self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1])
+        if self.use_gpu: 
+            self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X[:, -1, 1])
+        else: 
+            self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1])
         
         self.save_stats()
         print('train_time: ' + str(self.stats['train_time']))
