@@ -39,9 +39,9 @@ class Balance():
             return a * (self.unnorm_params[1] - self.unnorm_params[0]) + self.unnorm_params[0]
     
     def update(self, pred, target, y0):
-        pred = self.unnormalise(pred.detach().numpy() + y0.detach().numpy())
+        pred = self.unnormalise(pred.cpu().detach().numpy() + y0.cpu().detach().numpy())
         pred[pred < 0] = 0
-        target = self.unnormalise(target.detach().numpy() + y0.detach().numpy())
+        target = self.unnormalise(target.cpu().detach().numpy() + y0.cpu().detach().numpy())
         
         for i in np.arange(len(pred)): 
             self.balance_list.append(float(self.balance))
