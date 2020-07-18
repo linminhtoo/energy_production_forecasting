@@ -169,7 +169,7 @@ class TrainTest():
         self.stats['test_loss'] = self.loss(self.predictions, y.squeeze())#, X[:,-1,1].squeeze()) 
         # TODO: to incorporate the 3rd argument nicely^
         if self.use_gpu: 
-            self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X[:, -1, 1])
+            self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X[:, -1, 1].cpu())
         else: 
             self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1])
         
