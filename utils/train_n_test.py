@@ -5,7 +5,7 @@ from torch.autograd import Variable
 from tqdm import tqdm
 import sklearn.metrics as metrics
 import time
-from utils.custom_loss import Balance, revenue_loss
+from utils.custom_loss import Balance, opportunity_loss
 
 class TrainTest(): 
     # TODO: allow inference of class_size from data
@@ -57,7 +57,7 @@ class TrainTest():
                                 
             self.optimizer = params['OPTIMIZER'](self.model.parameters(),
                                                 lr=params['LEARNING_RATE'])
-        elif model.__repr__() in ['LSTM-CNN_concat', 'LSTM-CNN_stacked', 'CNN-LSTM_stacked']:
+        elif model.__repr__() in ['LSTM-CNN_concat']:
             self.model = model(input_shape        = data[0][0].shape, 
                                class_size         = class_size, 
                                cnn_hidden_sizes   = params['CNN_HIDDEN_SIZES'],
@@ -71,8 +71,17 @@ class TrainTest():
                                 
             self.optimizer = params['OPTIMIZER'](self.model.parameters(),
                                                 lr=params['LEARNING_RATE'])
+        elif model.__repr__() == 'MLP':
+            self.model = model(input_shape        = data[0][0].shape, 
+                               class_size         = class_size, 
+                               fc_sizes           = params['FC_SIZES'],
+                               droprate           = params['DROPOUT']) 
+                                
+            self.optimizer = params['OPTIMIZER'](self.model.parameters(),
+                                                lr=params['LEARNING_RATE'])
+            
         if self.use_gpu: 
-            self.model.cuda()
+            self.model = self.model.cuda()
         
         # result
         self.mean_train_loss = []
@@ -80,9 +89,17 @@ class TrainTest():
         self.min_val_loss    = np.infty
         self.stats           = {}
         self.predictions     = None
-        self.bal             = Balance(1e7, 10, 100, (0,87000), 'minmax')
+        
+        # balance 
+        self.balance_params       = params['BALANCE']
+        self.bal                  = Balance(self.balance_params['START'], 
+                                            self.balance_params['REWARD'],
+                                            self.balance_params['FINE'],
+                                            self.balance_params['NORM_HYPERPARAMS'],
+                                            self.balance_params['NORM'])
+        self.warm                 = self.balance_params['WARM'] # number of epoch before training starts
     
-    def train_one(self, data):
+    def train_one(self, data, epoch):
         if self.use_gpu: 
             X, y = Variable(data[0].cuda()), Variable(data[1].cuda())
         else: 
@@ -92,11 +109,13 @@ class TrainTest():
         outputs = self.model(X)
 
         # Updating balance 
-        #self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1])
-        
-        ## TODO: make this .long generalizable (MSE_loss is not compatible with long)
-        loss = self.loss(outputs.squeeze(), y.squeeze()) #, X[:,-1,1].squeeze()) # last argument is stem 
-        
+        if self.loss.__repr__() == 'Opportunity Loss':
+            loss = self.loss(outputs.squeeze(), y.squeeze(), X[:,-1,1].squeeze(), self.bal.balance_list[-1]/87000)
+            if epoch > self.warm: self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1].squeeze())
+        else:
+            ## TODO: make this .long generalizable (MSE_loss is not compatible with long)
+            loss = self.loss(outputs.squeeze(), y.squeeze()) # last argument is stem 
+
         if self.model.training: 
             self.optimizer.zero_grad()
             loss.backward()
@@ -115,14 +134,14 @@ class TrainTest():
             # training
             train_loss = []
             self.model.train()
-            for data in tqdm(self.trainset): train_loss.append(self.train_one(data))
+            for data in tqdm(self.trainset): train_loss.append(self.train_one(data, epoch))
             self.mean_train_loss.append(np.mean(train_loss)) 
             
             if self.val: 
                 # validating
                 val_loss = []
                 self.model.eval()
-                for data in tqdm(self.valset): val_loss.append(self.train_one(data))
+                for data in tqdm(self.valset): val_loss.append(self.train_one(data, epoch))
 
                 # check whether to early_stop
                 if self.early_stopping and self.min_val_loss - np.mean(val_loss) < self.min_delta:
@@ -166,12 +185,16 @@ class TrainTest():
         # make this generalisable 
         outputs  = self.model(X).data.squeeze()
         self.predictions = outputs
-        self.stats['test_loss'] = self.loss(self.predictions, y.squeeze())#, X[:,-1,1].squeeze()) 
+        
+        self.bal.balance_list = [self.balance_params['START']] # reset balance
+        if self.loss.__repr__() == 'Opportunity Loss':
+            self.stats['test_loss'] = self.loss(outputs.squeeze(), y.squeeze(), X[:,-1,1].squeeze(),
+                                                self.bal.unnormalise(self.bal.balance_list[-1]))
+        else:
+            self.stats['test_loss'] = self.loss(self.predictions, y.squeeze())
         # TODO: to incorporate the 3rd argument nicely^
-        if self.use_gpu: 
-            self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X[:, -1, 1])
-        else: 
-            self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1])
+        self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X.cpu()[:, -1, 1])
+        
         
         self.save_stats()
         print('train_time: ' + str(self.stats['train_time']))
