@@ -192,9 +192,12 @@ class TrainTest():
                                                 self.bal.unnormalise(self.bal.balance_list[-1]))
         else:
             self.stats['test_loss'] = self.loss(self.predictions, y.squeeze())
-        # TODO: to incorporate the 3rd argument nicely^
-        self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X.cpu()[:, -1, 1])
         
+        if self.use_gpu: 
+            self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X.cpu()[:, -1, 1])
+        else: 
+            self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1])
+
         
         self.save_stats()
         print('train_time: ' + str(self.stats['train_time']))
