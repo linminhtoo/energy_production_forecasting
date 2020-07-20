@@ -97,7 +97,7 @@ class TrainTest():
                                             self.balance_params['FINE'],
                                             self.balance_params['NORM_HYPERPARAMS'],
                                             self.balance_params['NORM'])
-        self.over_ratio           = self.balance_params['OVERFIT_RATIO']
+        self.over_ratio           = self.balance_params['OVERFIT_COST'] / self.balance_params['REWARD']
         self.warm                 = self.balance_params['WARM'] # number of epoch before training starts
     
     def train_one(self, data, epoch):
