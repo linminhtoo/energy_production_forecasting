@@ -97,6 +97,11 @@ class TrainTest():
                                             self.balance_params['FINE'],
                                             self.balance_params['NORM_HYPERPARAMS'],
                                             self.balance_params['NORM'])
+        self.bal_test             = Balance(self.balance_params['START'], 
+                                    self.balance_params['REWARD'],
+                                    self.balance_params['FINE'],
+                                    self.balance_params['NORM_HYPERPARAMS'],
+                                    self.balance_params['NORM'])
         self.over_ratio           = self.balance_params['OVERFIT_COST'] / self.balance_params['REWARD']
         self.warm                 = self.balance_params['WARM'] # number of epoch before training starts
     
@@ -112,11 +117,12 @@ class TrainTest():
         # Updating balance 
         if self.loss.__repr__() == 'Opportunity Loss':
             loss = self.loss(outputs.squeeze(), y.squeeze(), X[:,-1,1].squeeze(), 
-                             self.bal.unnormalise(self.bal.balance_list[-1]), self.over_ratio, self.use_gpu) # add param flag for use_gpu 
-            if epoch > self.warm: self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1].squeeze(), self.over_ratio, self.use_gpu) # add param flag for use_gpu
+                             self.bal.balance_list[-1], # self.bal.unnormalise()
+                             self.over_ratio, self.use_gpu) # add param flag for use_gpu 
+            if epoch > self.warm: self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1].squeeze(), self.over_ratio)  
         else:
             ## TODO: make this .long generalizable (MSE_loss is not compatible with long)
-            loss = self.loss(outputs.squeeze(), y.squeeze())  
+            loss = self.loss(outputs.squeeze(), y.squeeze()) 
 
         if self.model.training: 
             self.optimizer.zero_grad()
@@ -175,8 +181,9 @@ class TrainTest():
         self.stats['mean_val_loss']   = self.mean_val_loss
         self.stats['min_val_loss']    = self.min_val_loss
         self.stats['predictions']     = self.predictions
-        self.stats['bal_list']        = np.array(self.bal.balance_list)
-        self.stats['revenue']         = self.bal.balance_list[-1]
+        self.stats['bal_list']        = np.array(self.bal_test.balance_list)
+        self.stats['revenue']         = self.bal_test.balance_list[-1]
+        self.stats['over_ratio']      = self.over_ratio
         
     def test(self): 
         if self.use_gpu: 
@@ -188,21 +195,21 @@ class TrainTest():
         outputs  = self.model(X).data.squeeze()
         self.predictions = outputs
         
-        self.bal.balance_list = [self.balance_params['START']] # reset balance
+        self.bal_test.balance_list = [self.balance_params['START']] # reset balance
         if self.loss.__repr__() == 'Opportunity Loss':
             self.stats['test_loss'] = self.loss(outputs.squeeze(), y.squeeze(), X[:,-1,1].squeeze(),
-                                                self.bal.unnormalise(self.bal.balance_list[-1]),
+                                                self.bal_test.balance_list[-1], #
                                                 self.over_ratio, self.use_gpu) # add param flag for use_gpu
         else:
             self.stats['test_loss'] = self.loss(self.predictions, y.squeeze())
         
         if self.use_gpu: 
-            self.bal.balance_list = [self.balance_params['START']] 
-            self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X.cpu()[:, -1, 1], self.over_ratio)
+            self.bal_test.balance_list = [self.balance_params['START']] 
+            self.bal_test.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X.cpu()[:, -1, 1], self.over_ratio)
 
         else: 
-            self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1], self.over_ratio) 
-
+            self.bal_test.balance_list = [self.balance_params['START']] 
+            self.bal_test.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1], self.over_ratio) 
         
         self.save_stats()
         print('train_time: ' + str(self.stats['train_time']))
