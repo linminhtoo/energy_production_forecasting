@@ -98,10 +98,10 @@ class TrainTest():
                                             self.balance_params['NORM_HYPERPARAMS'],
                                             self.balance_params['NORM'])
         self.bal_test             = Balance(self.balance_params['START'], 
-                                    self.balance_params['REWARD'],
-                                    self.balance_params['FINE'],
-                                    self.balance_params['NORM_HYPERPARAMS'],
-                                    self.balance_params['NORM'])
+                                            self.balance_params['REWARD'],
+                                            self.balance_params['FINE'],
+                                            self.balance_params['NORM_HYPERPARAMS'],
+                                            self.balance_params['NORM'])
         self.over_ratio           = self.balance_params['OVERFIT_COST'] / self.balance_params['REWARD']
         self.warm                 = self.balance_params['WARM'] # number of epoch before training starts
     
@@ -181,8 +181,8 @@ class TrainTest():
         self.stats['mean_val_loss']   = self.mean_val_loss
         self.stats['min_val_loss']    = self.min_val_loss
         self.stats['predictions']     = self.predictions
-        self.stats['bal_list']        = np.array(self.bal.balance_list)
-        self.stats['revenue']         = self.bal.balance_list[-1]
+        self.stats['bal_list']        = np.array(self.bal_test.balance_list)
+        self.stats['revenue']         = self.bal_test.balance_list[-1]
         self.stats['over_ratio']      = self.over_ratio
         
     def test(self): 
