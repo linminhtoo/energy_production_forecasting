@@ -113,7 +113,7 @@ class TrainTest():
         if self.loss.__repr__() == 'Opportunity Loss':
             loss = self.loss(outputs.squeeze(), y.squeeze(), X[:,-1,1].squeeze(), 
                              self.bal.unnormalise(self.bal.balance_list[-1]), self.over_ratio, self.use_gpu) # add param flag for use_gpu 
-            if epoch > self.warm: self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1].squeeze(), self.over_ratio, self.use_gpu) # add param flag for use_gpu
+            if epoch > self.warm: self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1].squeeze(), self.over_ratio)  
         else:
             ## TODO: make this .long generalizable (MSE_loss is not compatible with long)
             loss = self.loss(outputs.squeeze(), y.squeeze())  
