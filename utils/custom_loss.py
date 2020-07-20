@@ -41,10 +41,10 @@ class Balance():
             # params = (min, max) 
             return a * (self.unnorm_params[1] - self.unnorm_params[0]) + self.unnorm_params[0]
     
-    def update(self, pred, target, y0, overfit_ratio):
-        pred = self.unnormalise(pred.detach().numpy() + y0.detach().numpy())
+    def update(self, pred, target, y0):
+        pred = self.unnormalise(pred.cpu().detach().numpy() + y0.cpu().detach().numpy())
         pred[pred < 0] = 0
-        target = self.unnormalise(target.detach().numpy() + y0.detach().numpy())
+        target = self.unnormalise(target.cpu().detach().numpy() + y0.cpu().detach().numpy())
         
         for i in np.arange(len(pred)): 
             diff = float(pred[i] - target[i])
