@@ -8,6 +8,7 @@ class opportunity_loss():
         
     def __call__(self, pred_dif, target_dif, y0, start_bal, overfit_ratio=1):
         pred = pred_dif + y0 
+        pred = torch.max(pred, torch.Tensor([0]).expand_as(pred))
         target = target_dif + y0 
         
         rev = torch.min(pred, target)
@@ -50,16 +51,11 @@ class Balance():
             diff = float(pred[i] - target[i])
             self.diff_list.append(diff)
             
-            # underpredicting
-            if diff <= 0: 
-                self.balance += pred[i] * self.reward 
-            else: # difference > 0 implies overpredicting
-                if diff <= self.balance: 
-                    self.balance += target[i] * self.reward 
-                    self.balance -= diff * self.reward  * overfit_ratio 
-                else: 
-                    self.balance += target[i] * self.reward
-                    self.balance -= diff * self.fine 
+            self.balance += min(pred[i], target[i]) * self.reward
+            if (pred[i] - target[i]) > (self.balance / overfit_ratio): 
+                self.balance = (pred[i] - target[i]) * -self.fine  # bankruptcy 
+            else: 
+                self.balance -= (pred[i] - target[i]) * self.reward * overfit_ratio
            
             self.balance_list.append(float(self.balance))
     
