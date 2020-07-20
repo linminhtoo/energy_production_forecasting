@@ -1,4 +1,5 @@
 import torch 
+import math
 import numpy as np
 
 # TODO: combine some codes from here with the one in Balance
@@ -10,9 +11,14 @@ class opportunity_loss():
         pred = pred_dif + y0 
         target = target_dif + y0 
         
-        rev = torch.min(pred, target)
-        rev -= torch.min(torch.nn.functional.relu(pred - target), 
-                         torch.Tensor([start_bal]).expand_as(pred)) * overfit_ratio # adding penalty  
+        if use_gpu: # need to .cuda() relevant tensors 
+            rev = torch.min(pred, target).cuda()
+            rev -= torch.min(torch.nn.functional.relu(pred - target), 
+                             torch.Tensor([start_bal]).cuda().expand_as(pred)) * overfit_ratio # adding penalty  
+        else: # not using gpu 
+            rev = torch.min(pred, target) 
+            rev -= torch.min(torch.nn.functional.relu(pred - target), 
+                             torch.Tensor([start_bal]).expand_as(pred)) * overfit_ratio # adding penalty  
         
         rev -= torch.nn.functional.relu(pred - target - start_bal) * self.fine
         
@@ -54,12 +60,15 @@ class Balance():
             if diff <= 0: 
                 self.balance += pred[i] * self.reward 
             else: # difference > 0 implies overpredicting
-                if diff <= self.balance: 
+                if diff * self.reward * overfit_ratio <= self.balance:  # corrected condition to check bankruptcy (need to multiply diff by price) 
                     self.balance += target[i] * self.reward 
                     self.balance -= diff * self.reward  * overfit_ratio 
-                else: 
+                else: # bankruptcy
+                    purchasable = math.floor(self.balance / (self.reward * overfit_ratio)) # e.g. if balance = 100, reward = 10, overfit = 2, returns 5 purchasable units
+                    self.balance -= purchasable * self.reward * overfit_ratio # deduct cost of purchasable units 
                     self.balance += target[i] * self.reward
-                    self.balance -= diff * self.fine 
+                    self.balance -= (diff - purchasable) * self.fine 
+                    # (diff - purchasable) is the amount we couldn't buy due to insufficient balance, have to buy it at fine price
            
             self.balance_list.append(float(self.balance))
     
