@@ -97,6 +97,7 @@ class TrainTest():
                                             self.balance_params['FINE'],
                                             self.balance_params['NORM_HYPERPARAMS'],
                                             self.balance_params['NORM'])
+        self.over_ratio           = self.balance_params['OVERFIT_RATIO']
         self.warm                 = self.balance_params['WARM'] # number of epoch before training starts
     
     def train_one(self, data, epoch):
@@ -110,8 +111,9 @@ class TrainTest():
 
         # Updating balance 
         if self.loss.__repr__() == 'Opportunity Loss':
-            loss = self.loss(outputs.squeeze(), y.squeeze(), X[:,-1,1].squeeze(), self.bal.balance_list[-1]/87000)
-            if epoch > self.warm: self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1].squeeze())
+            loss = self.loss(outputs.squeeze(), y.squeeze(), X[:,-1,1].squeeze(), 
+                             self.bal.unnormalise(self.bal.balance_list[-1]), self.over_ratio)
+            if epoch > self.warm: self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1].squeeze(), self.over_ratio)
         else:
             ## TODO: make this .long generalizable (MSE_loss is not compatible with long)
             loss = self.loss(outputs.squeeze(), y.squeeze()) # last argument is stem 
@@ -189,11 +191,12 @@ class TrainTest():
         self.bal.balance_list = [self.balance_params['START']] # reset balance
         if self.loss.__repr__() == 'Opportunity Loss':
             self.stats['test_loss'] = self.loss(outputs.squeeze(), y.squeeze(), X[:,-1,1].squeeze(),
-                                                self.bal.unnormalise(self.bal.balance_list[-1]))
+                                                self.bal.unnormalise(self.bal.balance_list[-1]),
+                                                self.over_ratio)
         else:
             self.stats['test_loss'] = self.loss(self.predictions, y.squeeze())
         # TODO: to incorporate the 3rd argument nicely^
-        self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X.cpu()[:, -1, 1])
+        self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X.cpu()[:, -1, 1], self.over_ratio)
         
         
         self.save_stats()

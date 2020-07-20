@@ -6,13 +6,13 @@ class opportunity_loss():
     def __init__(self):
         self.fine = 10
         
-    def __call__(self, pred_dif, target_dif, y0, start_bal):
+    def __call__(self, pred_dif, target_dif, y0, start_bal, overfit_ratio=1):
         pred = pred_dif + y0 
         target = target_dif + y0 
         
         rev = torch.min(pred, target)
         rev -= torch.min(torch.nn.functional.relu(pred - target), 
-                         torch.Tensor([start_bal]).expand_as(pred)) # adding penalty  
+                         torch.Tensor([start_bal]).expand_as(pred)) * overfit_ratio # adding penalty  
         
         rev -= torch.nn.functional.relu(pred - target - start_bal) * self.fine
         
@@ -41,7 +41,7 @@ class Balance():
             # params = (min, max) 
             return a * (self.unnorm_params[1] - self.unnorm_params[0]) + self.unnorm_params[0]
     
-    def update(self, pred, target, y0):
+    def update(self, pred, target, y0, overfit_ratio):
         pred = self.unnormalise(pred.detach().numpy() + y0.detach().numpy())
         pred[pred < 0] = 0
         target = self.unnormalise(target.detach().numpy() + y0.detach().numpy())
@@ -56,7 +56,7 @@ class Balance():
             else: # difference > 0 implies overpredicting
                 if diff <= self.balance: 
                     self.balance += target[i] * self.reward 
-                    self.balance -= diff * self.reward 
+                    self.balance -= diff * self.reward  * overfit_ratio 
                 else: 
                     self.balance += target[i] * self.reward
                     self.balance -= diff * self.fine 
