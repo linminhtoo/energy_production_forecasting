@@ -201,6 +201,7 @@ class TrainTest():
             self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X.cpu()[:, -1, 1], self.over_ratio)
 
         else: 
+            self.bal.balance_list = [self.balance_params['START']] 
             self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1], self.over_ratio) 
 
         
