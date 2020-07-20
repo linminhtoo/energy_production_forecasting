@@ -7,7 +7,7 @@ class opportunity_loss():
     def __init__(self):
         self.fine = 10
         
-    def __call__(self, pred_dif, target_dif, y0, start_bal, overfit_ratio=1):
+    def __call__(self, pred_dif, target_dif, y0, start_bal, overfit_ratio=1, use_gpu=True):
         pred = pred_dif + y0 
         target = target_dif + y0 
         
