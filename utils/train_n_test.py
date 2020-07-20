@@ -116,7 +116,7 @@ class TrainTest():
             if epoch > self.warm: self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1].squeeze(), self.over_ratio)
         else:
             ## TODO: make this .long generalizable (MSE_loss is not compatible with long)
-            loss = self.loss(outputs.squeeze(), y.squeeze()) # last argument is stem 
+            loss = self.loss(outputs.squeeze(), y.squeeze())  
 
         if self.model.training: 
             self.optimizer.zero_grad()
@@ -197,6 +197,7 @@ class TrainTest():
             self.stats['test_loss'] = self.loss(self.predictions, y.squeeze())
         
         if self.use_gpu: 
+            self.bal.balance_list = [self.balance_params['START']] 
             self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X.cpu()[:, -1, 1])
         else: 
             self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1])
