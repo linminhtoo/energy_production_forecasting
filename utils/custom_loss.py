@@ -1,4 +1,5 @@
 import torch 
+import math
 import numpy as np
 
 # TODO: combine some codes from here with the one in Balance
@@ -6,17 +7,25 @@ class opportunity_loss():
     def __init__(self):
         self.fine = 10
         
-    def __call__(self, pred_dif, target_dif, y0, start_bal, overfit_ratio=1):
+    def __call__(self, pred_dif, target_dif, y0, start_bal, overfit_ratio=1, use_gpu=True):
         pred = pred_dif + y0 
         pred = torch.max(pred, torch.Tensor([0]).expand_as(pred))
         target = target_dif + y0 
+        diff = pred - target 
         
-        rev = torch.min(pred, target)
-        rev -= torch.min(torch.nn.functional.relu(pred - target), 
-                         torch.Tensor([start_bal]).expand_as(pred)) * overfit_ratio # adding penalty  
+        bal  = torch.min(pred, target) + start_bal 
         
-        rev -= torch.nn.functional.relu(pred - target - start_bal) * self.fine
+        # conditions
+        overpredict = (diff > 0).float()
+        can_cover = (diff * overfit_ratio <= bal).float() 
         
+        # if overpredict, but can cover 
+        bal -= (overpredict * can_cover) * diff * overfit_ratio 
+        # if overpredict, but cannot cover 
+        bal -= torch.max((overpredict * (1-can_cover)) * bal, 0) # zeroes out balance if balance originally positive 
+        bal -= (overpredict * (1-can_cover)) * (diff * overfit_ratio - bal) / overfit_ratio * self.fine
+        
+        rev = bal - start_bal 
         loss = torch.mean(target - rev) 
         return loss 
     
@@ -50,13 +59,17 @@ class Balance():
         for i in np.arange(len(pred)): 
             diff = float(pred[i] - target[i])
             self.diff_list.append(diff)
+            over_pen = self.reward * overfit_ratio 
             
             self.balance += min(pred[i], target[i]) * self.reward
-            if (pred[i] - target[i]) > (self.balance / overfit_ratio): 
-                self.balance = (pred[i] - target[i]) * -self.fine  # bankruptcy 
-            else: 
-                self.balance -= (pred[i] - target[i]) * self.reward * overfit_ratio
-           
+            # overpredicting 
+            if diff > 0: 
+                if diff * over_pen <= self.balance: 
+                    self.balance -= diff * self.reward * overfit_ratio 
+                else:
+                    self.balance -= max(self.balance, 0) # zeroes out balance if balance originally positive 
+                    self.balance -= (diff * over_pen - self.balance) / over_pen * self.fine 
+
             self.balance_list.append(float(self.balance))
     
     def total_profit(self):
