@@ -25,6 +25,44 @@ class opportunity_loss():
         loss = torch.mean(target - rev) 
         return loss 
     
+#         pred = pred_dif + y0 
+#         target = target_dif + y0 
+#         diff = pred - target 
+        
+#         # if use_gpu:
+#         #   bal  = torch.min(pred, target).cuda() + start_bal
+#         # else:
+#         bal = torch.min(pred, target) + start_bal 
+        
+#         # unnormalise with minmax # to add other normalisations later 
+#         unnorm_diff = diff * unnorm_params[1] * overfit_ratio * reward 
+
+#         # conditions
+#         overpredict = (diff > 0).float()
+#         can_cover = (unnorm_diff <= bal).float() 
+        
+#         # if overpredict, but can cover 
+#         bal -= (overpredict * can_cover) * diff * overfit_ratio 
+#         # if overpredict, but cannot cover 
+#         bal -= torch.max((overpredict * (1-can_cover)) * bal, 0) # zeroes out balance if balance originally positive 
+#         bal -= (overpredict * (1-can_cover)) * (diff * overfit_ratio - bal) / overfit_ratio * self.fine
+        
+#         rev = bal - start_bal 
+
+#         # if use_gpu: # need to .cuda() relevant tensors 
+#         #     rev = torch.min(pred, target).cuda()
+#         #     rev -= torch.min(torch.nn.functional.relu(pred - target), 
+#         #                      torch.Tensor([start_bal]).cuda().expand_as(pred)) * overfit_ratio # adding penalty  
+#         # else: # not using gpu 
+#         #     rev = torch.min(pred, target) 
+#         #     rev -= torch.min(torch.nn.functional.relu(pred - target), 
+#         #                      torch.Tensor([start_bal]).expand_as(pred)) * overfit_ratio # adding penalty  
+        
+#         # rev -= torch.nn.functional.relu(pred - target - start_bal) * self.fine
+        
+#         loss = torch.mean(target - rev) 
+#         return loss 
+    
     def __repr__(self): 
         return 'Opportunity Loss'
 
