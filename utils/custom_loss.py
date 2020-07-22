@@ -55,21 +55,17 @@ class Balance():
         for i in np.arange(len(pred)): 
             diff = float(pred[i] - target[i])
             self.diff_list.append(diff)
+            over_pen = self.reward * overfit_ratio 
+            self.balance += min(pred[i], target[i]) * self.reward
             
-            # underpredicting
-            if diff <= 0: 
-                self.balance += pred[i] * self.reward 
-            else: # difference > 0 implies overpredicting
-                if diff * self.reward * overfit_ratio <= self.balance:  # corrected condition to check bankruptcy (need to multiply diff by price) 
-                    self.balance += target[i] * self.reward 
-                    self.balance -= diff * self.reward  * overfit_ratio 
-                else: # bankruptcy
-                    purchasable = math.floor(self.balance / (self.reward * overfit_ratio)) # e.g. if balance = 100, reward = 10, overfit = 2, returns 5 purchasable units
-                    self.balance -= purchasable * self.reward * overfit_ratio # deduct cost of purchasable units 
-                    self.balance += target[i] * self.reward
-                    self.balance -= (diff - purchasable) * self.fine 
-                    # (diff - purchasable) is the amount we couldn't buy due to insufficient balance, have to buy it at fine price
-           
+            # overpredicting 
+            if diff > 0: 
+                if diff * over_pen <= self.balance: 
+                    self.balance -= diff * self.reward * overfit_ratio 
+                else:
+                    self.balance -= max(self.balance, 0) # zeroes out balance if balance originally positive 
+                    self.balance -= (diff * over_pen - self.balance) / over_pen * self.fine 
+
             self.balance_list.append(float(self.balance))
     
     def total_profit(self):
