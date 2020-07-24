@@ -1,17 +1,17 @@
 import torch 
 import numpy as np
 
-# TODO: combine some codes from here with the one in Balance
 class opportunity_loss(): 
     def __init__(self):
         self.fine = 10
         
-    def __call__(self, pred_dif, target_dif, y0, start_bal, overpred_ratio=1, use_gpu=True):
+    def __call__(self, pred_dif, target_dif, y0, start_bal, overpred_ratio=1):
         pred = pred_dif + y0 
         pred = torch.max(pred, torch.Tensor([0]).expand_as(pred))
         target = target_dif + y0 
         diff = pred - target 
         
+        start_bal = torch.Tensor([start_bal]).expand(pred.shape[0])
         bal = torch.min(pred, target) + start_bal 
         
         # conditions
@@ -19,14 +19,14 @@ class opportunity_loss():
         can_cover = (diff * overpred_ratio <= bal).float() 
         
         # if overpredict, but can cover 
-        bal = bal - (overpredict * can_cover) * diff * overpred_ratio 
+        bal -= (overpredict * can_cover) * diff * overpred_ratio 
         # if overpredict, but cannot cover 
-        buffer = torch.max((overpredict * (1-can_cover)) * bal, torch.zeros(bal.shape[0]))
-        bal -= buffer + (overpredict * (1-can_cover)) * (dif * overpred_ratio - bal) / overpred_ratio * self.fine 
+        buffer = torch.max((overpredict * (1-can_cover)) * bal, torch.zeros(pred.shape[0]))
+        bal -= buffer + (overpredict * (1-can_cover)) * (diff * overpred_ratio - bal) / overpred_ratio * self.fine 
         
         rev = bal - start_bal 
         loss = torch.mean(target - rev) 
-        return bal 
+        return loss
     
     def __repr__(self): 
         return 'Opportunity Loss'

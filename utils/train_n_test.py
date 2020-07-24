@@ -112,8 +112,8 @@ class TrainTest():
         # Updating balance 
         if self.loss.__repr__() == 'Opportunity Loss':
             loss = self.loss(outputs.squeeze(), y.squeeze(), X[:,-1,1].squeeze(), 
-                             self.bal.unnormalise(self.bal.balance_list[-1]), self.over_ratio, self.use_gpu) # add param flag for use_gpu 
-            if epoch > self.warm: self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1].squeeze(), self.over_ratio, self.use_gpu) # add param flag for use_gpu
+                             self.bal.balance_list[-1] / self.bal.unnorm_params[1], self.over_ratio)  
+            if epoch > self.warm: self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1].squeeze(), self.over_ratio) 
         else:
             ## TODO: make this .long generalizable (MSE_loss is not compatible with long)
             loss = self.loss(outputs.squeeze(), y.squeeze())  
@@ -188,21 +188,34 @@ class TrainTest():
         outputs  = self.model(X).data.squeeze()
         self.predictions = outputs
         
-        self.bal.balance_list = [self.balance_params['START']] # reset balance
+        self.bal                  = Balance(self.balance_params['START'], 
+                                            self.balance_params['REWARD'],
+                                            self.balance_params['FINE'],
+                                            self.balance_params['NORM_HYPERPARAMS'],
+                                            self.balance_params['NORM'])
         if self.loss.__repr__() == 'Opportunity Loss':
             self.stats['test_loss'] = self.loss(outputs.squeeze(), y.squeeze(), X[:,-1,1].squeeze(),
-                                                self.bal.unnormalise(self.bal.balance_list[-1]),
-                                                self.over_ratio, self.use_gpu) # add param flag for use_gpu
+                                                self.bal.balance_list[-1]/ self.bal.unnorm_params[1],
+                                                self.over_ratio) 
         else:
             self.stats['test_loss'] = self.loss(self.predictions, y.squeeze())
-        
+            
         if self.use_gpu: 
-            self.bal.balance_list = [self.balance_params['START']] 
+            self.bal                  = Balance(self.balance_params['START'], 
+                                            self.balance_params['REWARD'],
+                                            self.balance_params['FINE'],
+                                            self.balance_params['NORM_HYPERPARAMS'],
+                                            self.balance_params['NORM'])
             self.bal.update(outputs.squeeze().cpu(), y.squeeze().cpu(), X.cpu()[:, -1, 1], self.over_ratio)
 
         else: 
+            self.bal                  = Balance(self.balance_params['START'], 
+                                            self.balance_params['REWARD'],
+                                            self.balance_params['FINE'],
+                                            self.balance_params['NORM_HYPERPARAMS'],
+                                            self.balance_params['NORM'])
             self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1], self.over_ratio) 
-
+            
         
         self.save_stats()
         print('train_time: ' + str(self.stats['train_time']))
