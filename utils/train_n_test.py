@@ -117,7 +117,7 @@ class TrainTest():
         # Updating balance 
         if self.loss.__repr__() == 'Opportunity Loss':
             loss = self.loss(outputs.squeeze(), y.squeeze(), X[:,-1,1].squeeze(), 
-                             self.bal.balance_list[-1], # self.bal.unnormalise()
+                             self.bal.balance_list[-1]/self.bal.unnorm_params[1], # self.bal.unnormalise()
                              self.over_ratio, self.use_gpu) # add param flag for use_gpu 
             if epoch > self.warm: self.bal.update(outputs.squeeze(), y.squeeze(), X[:, -1, 1].squeeze(), self.over_ratio)  
         else:
@@ -198,7 +198,7 @@ class TrainTest():
         self.bal_test.balance_list = [self.balance_params['START']] # reset balance
         if self.loss.__repr__() == 'Opportunity Loss':
             self.stats['test_loss'] = self.loss(outputs.squeeze(), y.squeeze(), X[:,-1,1].squeeze(),
-                                                self.bal_test.balance_list[-1], #
+                                                self.bal_test.balance_list[-1] / self.bal.unnorm_params[1], #
                                                 self.over_ratio, self.use_gpu) # add param flag for use_gpu
         else:
             self.stats['test_loss'] = self.loss(self.predictions, y.squeeze())
