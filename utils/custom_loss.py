@@ -7,23 +7,41 @@ class opportunity_loss():
     def __init__(self):
         self.fine = 10
         
-    def __call__(self, pred_dif, target_dif, y0, start_bal, overfit_ratio=1, use_gpu=True):
+    def __call__(self, pred_dif, target_dif, y0, start_bal, overpred_ratio=1, use_gpu=True):
         pred = pred_dif + y0 
+        if use_gpu:
+          pred = torch.max(pred, torch.Tensor([0]).cuda().expand_as(pred)).cuda()
+        else:
+          pred = torch.max(pred, torch.Tensor([0]).expand_as(pred))
         target = target_dif + y0 
+        diff = pred - target 
         
-        if use_gpu: # need to .cuda() relevant tensors 
-            rev = torch.min(pred, target).cuda()
-            rev -= torch.min(torch.nn.functional.relu(pred - target), 
-                             torch.Tensor([start_bal]).cuda().expand_as(pred)) * overfit_ratio # adding penalty  
-        else: # not using gpu 
-            rev = torch.min(pred, target) 
-            rev -= torch.min(torch.nn.functional.relu(pred - target), 
-                             torch.Tensor([start_bal]).expand_as(pred)) * overfit_ratio # adding penalty  
+        if use_gpu:
+          start_bal = torch.Tensor([start_bal]).cuda().expand(pred.shape[0])
+          bal = torch.min(pred, target).cuda() + start_bal 
+        else:
+          start_bal = torch.Tensor([start_bal]).expand(pred.shape[0])
+          bal = torch.min(pred, target) + start_bal           
         
-        rev -= torch.nn.functional.relu(pred - target - start_bal) * self.fine
+        # conditions
+        overpredict = (diff > 0).float()
+        can_cover = (diff * overpred_ratio <= bal).float() 
         
+        # if overpredict, but can cover 
+        bal -= (overpredict * can_cover) * diff * overpred_ratio 
+        # if overpredict, but cannot cover
+
+        if use_gpu:
+          buffer = torch.max((overpredict * (1-can_cover)) * bal, torch.zeros(pred.shape[0]).cuda()).cuda()
+          bal -= buffer + (overpredict * (1-can_cover)) * (diff * overpred_ratio - bal) / overpred_ratio * self.fine           
+        else:
+          buffer = torch.max((overpredict * (1-can_cover)) * bal, torch.zeros(pred.shape[0]))
+          bal -= buffer + (overpredict * (1-can_cover)) * (diff * overpred_ratio - bal) / overpred_ratio * self.fine 
+        
+        rev = bal - start_bal 
         loss = torch.mean(target - rev) 
-        return loss 
+        return loss
+    
     
     def __repr__(self): 
         return 'Opportunity Loss'
