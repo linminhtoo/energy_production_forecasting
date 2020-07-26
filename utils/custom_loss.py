@@ -7,12 +7,19 @@ class opportunity_loss():
         
     def __call__(self, pred_dif, target_dif, y0, start_bal, overpred_ratio=1):
         pred = pred_dif + y0 
-        pred = torch.max(pred, torch.Tensor([0]).expand_as(pred))
+        if use_gpu:
+          pred = torch.max(pred, torch.Tensor([0]).cuda().expand_as(pred)).cuda()
+        else:
+          pred = torch.max(pred, torch.Tensor([0]).expand_as(pred))
         target = target_dif + y0 
         diff = pred - target 
         
-        start_bal = torch.Tensor([start_bal]).expand(pred.shape[0])
-        bal = torch.min(pred, target) + start_bal 
+        if use_gpu:
+          start_bal = torch.Tensor([start_bal]).cuda().expand(pred.shape[0])
+          bal = torch.min(pred, target).cuda() + start_bal 
+        else:
+          start_bal = torch.Tensor([start_bal]).expand(pred.shape[0])
+          bal = torch.min(pred, target) + start_bal          
         
         # conditions
         overpredict = (diff > 0).float()
@@ -21,8 +28,12 @@ class opportunity_loss():
         # if overpredict, but can cover 
         bal -= (overpredict * can_cover) * diff * overpred_ratio 
         # if overpredict, but cannot cover 
-        buffer = torch.max((overpredict * (1-can_cover)) * bal, torch.zeros(pred.shape[0]))
-        bal -= buffer + (overpredict * (1-can_cover)) * (diff * overpred_ratio - bal) / overpred_ratio * self.fine 
+        if use_gpu:
+          buffer = torch.max((overpredict * (1-can_cover)) * bal, torch.zeros(pred.shape[0]).cuda()).cuda()
+          bal -= buffer + (overpredict * (1-can_cover)) * (diff * overpred_ratio - bal) / overpred_ratio * self.fine           
+        else:
+          buffer = torch.max((overpredict * (1-can_cover)) * bal, torch.zeros(pred.shape[0]))
+          bal -= buffer + (overpredict * (1-can_cover)) * (diff * overpred_ratio - bal) / overpred_ratio * self.fine 
         
         rev = bal - start_bal 
         loss = torch.mean(target - rev) 
