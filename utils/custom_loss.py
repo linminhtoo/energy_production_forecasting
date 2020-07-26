@@ -65,7 +65,7 @@ class Balance():
             # params = (min, max) 
             return a * (self.unnorm_params[1] - self.unnorm_params[0]) + self.unnorm_params[0]
     
-    def update(self, pred, target, y0, overfit_ratio=1):
+    def update(self, pred, target, y0, overpred_ratio=1):
         pred = self.unnormalise(pred.cpu().detach().numpy() + y0.cpu().detach().numpy())
         pred[pred < 0] = 0
         target = self.unnormalise(target.cpu().detach().numpy() + y0.cpu().detach().numpy())
@@ -73,16 +73,15 @@ class Balance():
         for i in np.arange(len(pred)): 
             diff = float(pred[i] - target[i])
             self.diff_list.append(diff)
-            over_pen = self.reward * overfit_ratio 
-            self.balance += min(pred[i], target[i]) * self.reward
+            over_pen = self.reward * overpred_ratio 
             
+            self.balance += min(pred[i], target[i]) * self.reward
             # overpredicting 
             if diff > 0: 
                 if diff * over_pen <= self.balance: 
-                    self.balance -= diff * self.reward * overfit_ratio 
+                    self.balance -= diff * self.reward * overpred_ratio 
                 else:
-                    self.balance -= max(self.balance, 0) # zeroes out balance if balance originally positive 
-                    self.balance -= (diff * over_pen - self.balance) / over_pen * self.fine 
+                    self.balance -= (diff * over_pen - self.balance - max(self.balance,0)) / over_pen * self.fine + max(self.balance,0)
 
             self.balance_list.append(float(self.balance))
     
